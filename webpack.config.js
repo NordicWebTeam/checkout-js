@@ -6,6 +6,7 @@ const { join } = require('path');
 const StyleLintPlugin = require('stylelint-webpack-plugin');
 const { DefinePlugin } = require('webpack');
 const WebpackAssetsManifest = require('webpack-assets-manifest');
+const Dotenv = require('dotenv-webpack');
 
 const { AsyncHookPlugin,
     BuildHookPlugin,
@@ -108,6 +109,10 @@ function appConfig(options, argv) {
                     library: LIBRARY_NAME,
                 },
                 plugins: [
+                    new Dotenv({
+                        path: './.env',
+                        silent: true
+                    }),
                     new StyleLintPlugin({
                         fix: !isProduction,
                         cache: true,

@@ -12,6 +12,7 @@ import {
     FormField,
     ShippingInitializeOptions,
     ShippingRequestOptions,
+    StoreConfig,
 } from '@bigcommerce/checkout-sdk';
 import { noop } from 'lodash';
 import React, { Component, ReactNode } from 'react';
@@ -36,6 +37,7 @@ import ShippingForm from './ShippingForm';
 import ShippingHeader from './ShippingHeader';
 import { SingleShippingFormValues } from './SingleShippingForm';
 import StripeShipping from './stripeUPE/StripeShipping';
+import Ingrid from './Ingrid';
 
 export interface ShippingProps {
     isBillingSameAsShipping: boolean;
@@ -51,6 +53,7 @@ export interface ShippingProps {
 }
 
 export interface WithCheckoutShippingProps {
+    config: StoreConfig;
     billingAddress?: Address;
     cart: Cart;
     consignments: Consignment[];
@@ -90,6 +93,14 @@ interface ShippingState {
     isInitializing: boolean;
 }
 
+interface Window {
+    checkoutConfig: any; // Replace 'any' with the appropriate type
+}
+
+// This line ensures TypeScript uses the extended interface
+declare var window: Window;
+
+
 class Shipping extends Component<ShippingProps & WithCheckoutShippingProps, ShippingState> {
     constructor(props: ShippingProps & WithCheckoutShippingProps) {
         super(props);
@@ -112,6 +123,7 @@ class Shipping extends Component<ShippingProps & WithCheckoutShippingProps, Ship
             await Promise.all([loadShippingAddressFields(), loadShippingOptions(), loadBillingAddressFields()]);
 
             onReady();
+
         } catch (error) {
             onUnhandledError(error);
         } finally {
@@ -138,6 +150,26 @@ class Shipping extends Component<ShippingProps & WithCheckoutShippingProps, Ship
         const {
             isInitializing,
         } = this.state;
+        if (window.checkoutConfig && window.checkoutConfig.publicPath) {
+            const publicPath = window.checkoutConfig.publicPath;
+      
+            // Find the script tag by part of its src attribute
+            const scriptTag = document.querySelector(`script[src^="${publicPath}"]`);
+      
+            if (scriptTag) {
+              // Get the full src attribute of the script tag
+              const scriptSrc = scriptTag.getAttribute('src');
+      
+              if (scriptSrc) {
+                // Create a URL object from the scriptSrc
+                const url = new URL(scriptSrc);
+      
+                // Extract the 'form' parameter from the query string
+                const formParamValue = url.searchParams.get('form');
+                window.checkoutConfig.ingridForm = formParamValue;
+              }
+            }
+        }
 
         if (shouldRenderStripeForm && !customer.email && this.props.countries.length > 0) {
             return <StripeShipping
@@ -157,7 +189,40 @@ class Shipping extends Component<ShippingProps & WithCheckoutShippingProps, Ship
                 updateAddress={updateShippingAddress}
             />;
         }
-
+        if(window.checkoutConfig.ingridForm == 'delivery'){
+        return (
+            <>
+                <Ingrid
+                    { ...shippingFormProps }
+                    shouldDisableSubmit={false}
+                    updateShippingAddress={updateShippingAddress}
+                    isBillingSameAsShipping={isBillingSameAsShipping}
+                    isMultiShippingMode={false}
+                    step={step}
+                    reloadShippingForm={this.reloadShippingForm}
+                />
+                <AddressFormSkeleton isLoading={isInitializing}>
+                    <div className="checkout-form">
+                        <ShippingForm
+                            {...shippingFormProps}
+                            addresses={customer.addresses}
+                            deinitialize={deinitializeShippingMethod}
+                            initialize={initializeShippingMethod}
+                            isBillingSameAsShipping={isBillingSameAsShipping}
+                            isFloatingLabelEnabled={isFloatingLabelEnabled}
+                            isGuest={isGuest}
+                            isMultiShippingMode={isMultiShippingMode}
+                            onMultiShippingSubmit={this.handleMultiShippingSubmit}
+                            onSingleShippingSubmit={this.handleSingleShippingSubmit}
+                            onUseNewAddress={this.handleUseNewAddress}
+                            shouldShowSaveAddress={!isGuest}
+                            updateAddress={updateShippingAddress}
+                        />
+                    </div>
+                </AddressFormSkeleton>
+            </>
+        );
+        } else {
         return (
             <AddressFormSkeleton isLoading={isInitializing}>
                 <div className="checkout-form">
@@ -185,6 +250,29 @@ class Shipping extends Component<ShippingProps & WithCheckoutShippingProps, Ship
                 </div>
             </AddressFormSkeleton>
         );
+        }
+    }
+
+    private reloadShippingForm = async () => {
+        //updateShippingAddress from consignments
+        const {
+            consignments,
+            updateShippingAddress,
+            onUnhandledError = noop,
+        } = this.props;
+        if (consignments.length > 0) {
+            this.setState({ isInitializing: true });
+
+            try {
+                // Collapse all consignments into one
+                await updateShippingAddress(consignments[0].shippingAddress);
+            } catch (error) {
+                onUnhandledError(error);
+            } finally {
+                this.setState({ isInitializing: false });
+            }
+        }
+        
     }
 
     private handleMultiShippingModeSwitch: () => void = async () => {
@@ -225,7 +313,7 @@ class Shipping extends Component<ShippingProps & WithCheckoutShippingProps, Ship
             navigateNextStep,
             onUnhandledError,
             shippingAddress,
-            billingAddress,
+            //billingAddress,
             methodId,
         } = this.props;
 
@@ -240,7 +328,7 @@ class Shipping extends Component<ShippingProps & WithCheckoutShippingProps, Ship
         if (
             billingSameAsShipping &&
             updatedShippingAddress &&
-            !isEqualAddress(updatedShippingAddress, billingAddress) &&
+            // !isEqualAddress(updatedShippingAddress, billingAddress) &&
             !hasRemoteBilling
         ) {
             promises.push(updateBillingAddress(updatedShippingAddress));
@@ -428,6 +516,7 @@ export function mapToShippingProps({
         updateShippingAddress: checkoutService.updateShippingAddress,
         isFloatingLabelEnabled: isFloatingLabelEnabled(config.checkoutSettings),
         shouldRenderStripeForm: providerWithCustomCheckout === PaymentMethodId.StripeUPE && shouldUseStripeLinkByMinimumAmount(cart),
+        config
     };
 }
 

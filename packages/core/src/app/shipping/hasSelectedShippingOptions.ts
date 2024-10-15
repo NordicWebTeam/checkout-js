@@ -9,13 +9,12 @@ export default function hasSelectedShippingOptions(consignments: Consignment[]):
     return every(
         consignments,
         (consignment) =>
-            (consignment.selectedShippingOption &&
-                consignment.selectedShippingOption.id &&
-                // Selected option is available
-                consignment.availableShippingOptions &&
-                consignment.availableShippingOptions.filter(
-                    ({ id }) => id === consignment.selectedShippingOption?.id,
-                ).length) ||
-            consignment.selectedShippingOption?.type === 'custom',
+            consignment.selectedShippingOption &&
+            consignment.selectedShippingOption.id &&
+            // Selected option is available
+            consignment.availableShippingOptions &&
+            consignment.availableShippingOptions.filter(
+                ({ id }) => id === consignment.selectedShippingOption?.id,
+            ).length,
     );
 }

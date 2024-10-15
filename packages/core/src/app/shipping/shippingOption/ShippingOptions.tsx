@@ -1,4 +1,4 @@
-import { Cart, CheckoutSelectors, Consignment } from '@bigcommerce/checkout-sdk';
+import { Cart, CheckoutSelectors, Consignment, StoreConfig } from '@bigcommerce/checkout-sdk';
 import { map, sortBy, uniq } from 'lodash';
 import { createSelector } from 'reselect';
 
@@ -25,6 +25,7 @@ export interface WithCheckoutShippingOptionsProps {
     subscribeToConsignments(subscriber: (state: CheckoutSelectors) => void): () => void;
     selectShippingOption(consignmentId: string, optionId: string): Promise<CheckoutSelectors>;
     isLoading(consignmentId?: string): boolean;
+    config: StoreConfig;
 }
 
 const subscribeToConsignmentsSelector = createSelector(
@@ -104,6 +105,7 @@ export function mapToShippingOptions(
             checkoutService,
             checkoutState,
         }),
+        config
     };
 }
 

@@ -15,6 +15,15 @@ import StaticConsignmentItemList from '../StaticConsignmentItemList';
 import { ShippingOptionsProps, WithCheckoutShippingOptionsProps } from './ShippingOptions';
 import './ShippingOptionsForm.scss';
 import ShippingOptionsList from './ShippingOptionsList';
+import IngridV1 from '../IngridV1';
+interface Window {
+    checkoutConfig: any; // Replace 'any' with the appropriate type
+}
+
+// This line ensures TypeScript uses the extended interface
+declare var window: Window;
+
+
 
 export type ShippingOptionsFormProps = ShippingOptionsProps & WithCheckoutShippingOptionsProps & AnalyticsContextProps;
 
@@ -81,6 +90,11 @@ class ShippingOptionsForm extends PureComponent<
 
         return (
             <>
+            { window.checkoutConfig.ingridForm == "search" && ( <IngridV1
+                { ...this.props }
+                selectDefaultShippingOptions={this.selectDefaultShippingOptions}
+            />
+            )}
                 {consignments.map((consignment) => (
                     <div className="shippingOptions-container form-fieldset" key={consignment.id}>
                         {isMultiShippingMode && this.renderConsignment(consignment)}
@@ -92,6 +106,8 @@ class ShippingOptionsForm extends PureComponent<
                             isMultiShippingMode = {isMultiShippingMode}
                             onSelectedOption={selectShippingOption}
                             selectedShippingOptionId={
+                                // consignment.availableShippingOptions &&
+                                // consignment.availableShippingOptions[0].id
                                 consignment.selectedShippingOption &&
                                 consignment.selectedShippingOption.id
                             }
@@ -118,8 +134,8 @@ class ShippingOptionsForm extends PureComponent<
         const { selectShippingOption, setFieldValue } = this.props;
 
         const consignment = (data.getConsignments() || []).find(
-            ({ selectedShippingOption, availableShippingOptions: shippingOptions }) =>
-                !selectedShippingOption && shippingOptions,
+            ({ availableShippingOptions: shippingOptions }) =>
+                shippingOptions,
         );
 
         if (!consignment || !consignment.availableShippingOptions) {
